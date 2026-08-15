@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#181818">
+    <title>Artesanías de la Selva · Libro Interactivo</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #2e332d 0%, #1c201b 50%, #101310 100%);
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        /* VISOR Y ALINEACIÓN */
+        .viewer {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 10px;
+        }
+
+        .header {
+            position: fixed;
+            top: 12px;
+            right: 15px;
+            z-index: 50;
+        }
+
+        .fullscreen-button {
+            width: 38px;
+            height: 38px;
+            border: none;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0.85;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-button:hover {
+            opacity: 1;
+            transform: scale(1.08);
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        /* CONTENEDOR DEL LIBRO RESTRINGIDO */
+        .book-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* PÁGINAS Y LIENZO */
+        .flip-book {
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
+            margin: auto;
+        }
+
+        .page {
+            background-color: #ffffff;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        .page img {
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            display: block;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        /* CONTROLES */
+        .controls {
+            position: fixed;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 6px 16px;
+            border-radius: 40px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-button {
+            width: 34px;
+            height: 34px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .page-counter {
+            min-width: 75px;
+            text-align: center;
+            font-size: 12px;
+            letter-spacing: 1px;
+            opacity: 0.9;
+        }
+
+        /* CARGA Y AVISOS */
+        .loading {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #101310;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .loader {
+            width: 35px;
+            height: 35px;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            margin-top: 15px;
+            font-size: 13px;
+            letter-spacing: 2px;
+            opacity: 0.7;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .rotate-message {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 30px;
+            background: radial-gradient(circle at center, #2e332d 0%, #101310 70%);
+        }
+
+        .rotate-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            animation: rotatePhone 2s ease-in-out infinite;
+        }
+
+        .rotate-message h2 {
+            margin: 0 0 8px;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .rotate-message p {
+            margin: 0;
+            max-width: 250px;
+            line-height: 1.4;
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        @keyframes rotatePhone {
+            0% { transform: rotate(0deg); }
+            40%, 70% { transform: rotate(90deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            .rotate-message { display: flex; }
+            .viewer { display: none; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <section class="rotate-message" id="rotateMessage">
+        <div class="rotate-icon">📱</div>
+        <h2>Gira tu dispositivo</h2>
+        <p>Para apreciar mejor el libro de artesanías, coloca tu teléfono en posición horizontal.</p>
+    </section>
+
+    <section class="loading" id="loading">
+        <div class="loader"></div>
+        <div class="loading-text">Cargando libro...</div>
+    </section>
+
+    <main class="viewer" id="viewer">
+        <header class="header">
+            <button class="fullscreen-button" id="fullscreenButton" aria-label="Pantalla completa">⛶</button>
+        </header>
+
+        <section class="book-wrapper" id="bookWrapper">
+            <div id="book" class="flip-book"></div>
+        </section>
+
+        <nav class="controls" aria-label="Controles del libro">
+            <button class="control-button" id="previousButton" aria-label="Página anterior">←</button>
+            <div class="page-counter" id="pageCounter">1-2 / 30</div>
+            <button class="control-button" id="nextButton" aria-label="Página siguiente">→</button>
+        </nav>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+
+    <script>
+        const totalPaginas = 30; // 30 páginas totales (15 pliegos)
+        const bookElement = document.getElementById("book");
+        const pageCounter = document.getElementById("pageCounter");
+        const loading = document.getElementById("loading");
+        const previousButton = document.getElementById("previousButton");
+        const nextButton = document.getElementById("nextButton");
+        const fullscreenButton = document.getElementById("fullscreenButton");
+        const viewer = document.getElementById("viewer");
+
+        let pageFlip = null;
+
+        function ocultarCarga() {
+            if (loading) {
+                loading.classList.add("hidden");
+            }
+        }
+
+        function crearPaginas() {
+            bookElement.innerHTML = "";
+            for (let i = 1; i <= totalPaginas; i++) {
+                const page = document.createElement("div");
+                page.className = "page";
+
+                const image = document.createElement("img");
+                image.src = `${i}.jpg`;
+                image.alt = `Página ${i} de Artesanías de la Selva`;
+
+                page.appendChild(image);
+                bookElement.appendChild(page);
+            }
+        }
+
+        function actualizarContador(numero) {
+            // Como van de 2 en 2, mostramos el rango de páginas del pliego (ej. 1-2 / 30, 3-4 / 30)
+            const izq = (numero * 1) + 1;
+            const der = Math.min(izq + 1, totalPaginas);
+            
+            if (izq >= totalPaginas) {
+                pageCounter.textContent = `${totalPaginas} / ${totalPaginas}`;
+            } else {
+                pageCounter.textContent = `${izq}-${der} / ${totalPaginas}`;
+            }
+        }
+
+        function calcularDimensiones() {
+            const availWidth = window.innerWidth - 60;
+            const availHeight = window.innerHeight - 100;
+            
+            const aspectRatioPage = 0.666; 
+
+            let height = availHeight;
+            let width = height * aspectRatioPage;
+
+            if ((width * 2) > availWidth) {
+                width = (availWidth / 2);
+                height = width / aspectRatioPage;
+            }
+
+            return {
+                width: Math.floor(width),
+                height: Math.floor(height)
+            };
+        }
+
+        function iniciarLibro() {
+            try {
+                const dims = calcularDimensiones();
+
+                pageFlip = new St.PageFlip(bookElement, {
+                    width: dims.width,
+                    height: dims.height,
+                    size: "fixed",
+                    minWidth: 100,
+                    maxWidth: 800,
+                    minHeight: 150,
+                    maxHeight: 1200,
+                    maxShadowOpacity: 0.35,
+                    showCover: false, // CLAVE: Desactiva la portada solitaria para mostrar siempre parejas de 2 en 2
+                    flippingTime: 600,
+                    usePortrait: false,
+                    startPage: 0,
+                    mobileScrollSupport: false
+                });
+
+                pageFlip.loadFromHTML(document.querySelectorAll(".page"));
+
+                pageFlip.on("flip", (event) => {
+                    actualizarContador(event.data);
+                });
+
+                actualizarContador(0);
+            } catch (error) {
+                console.error("Error al iniciar flipbook:", error);
+            } finally {
+                setTimeout(ocultarCarga, 300);
+            }
+        }
+
+        previousButton.addEventListener("click", () => {
+            if (pageFlip) pageFlip.flipPrev();
+        });
+
+        nextButton.addEventListener("click", () => {
+            if (pageFlip) pageFlip.flipNext();
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (!pageFlip) return;
+            if (event.key === "ArrowLeft") pageFlip.flipPrev();
+            if (event.key === "ArrowRight") pageFlip.flipNext();
+            if (event.key === "Home") pageFlip.turnToPage(0);
+            if (event.key === "End") pageFlip.turnToPage(totalPaginas - 1);
+            if (event.key === "Escape") salirPantallaCompleta();
+        });
+
+        async function cambiarPantallaCompleta() {
+            try {
+                if (!document.fullscreenElement) {
+                    await viewer.requestFullscreen();
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch (error) {
+                console.log("Pantalla completa no disponible:", error);
+            }
+        }
+
+        function salirPantallaCompleta() {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        }
+
+        fullscreenButton.addEventListener("click", cambiarPantallaCompleta);
+
+        document.addEventListener("fullscreenchange", () => {
+            if (document.fullscreenElement) {
+                fullscreenButton.textContent = "×";
+            } else {
+                fullscreenButton.textContent = "⛶";
+            }
+        });
+
+        let resizeTimeout;
+        window.addEventListener("resize", () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (pageFlip) {
+                    const dims = calcularDimensiones();
+                    pageFlip.updateFromSettings({
+                        width: dims.width,
+                        height: dims.height
+                    });
+                }
+            }, 200);
+        });
+
+        window.addEventListener("load", () => {
+            crearPaginas();
+            iniciarLibro();
+        });
+    </script>
+</body>
+</html>
